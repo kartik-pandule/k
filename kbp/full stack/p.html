@@ -1,0 +1,28 @@
+<html>
+    <head>
+        <title>javasvript</title>
+    </head>
+
+    <body>
+        <script>
+            //document.writeln("hi welcome to javascript");
+            var actual_pin=("2222");
+            var pin;
+            var count=0;
+            do{
+                pin=prompt("enter the pin","enter the pin .....");
+                count++;
+
+
+            }while(pin!=actual_pin,count<3);
+            if(pin==actual_pin)
+            {
+                document.write("welcome user");
+            }
+            else{
+                document.write("account blocked");
+            }
+
+        </script>
+    </body>
+</html>

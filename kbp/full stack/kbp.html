@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeteoCast - Database Connected</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+        }
+
+        .glass-card {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        body { transition: background 1.5s ease-in-out; }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-900 text-white font-sans antialiased" id="app-body">
+
+    <div class="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6">
+        
+        <!-- Navbar -->
+        <nav class="flex flex-col sm:flex-row justify-between items-center gap-4 z-50">
+            <div class="flex items-center gap-3">
+                <div class="bg-white/20 p-2 rounded-xl backdrop-blur-md border border-white/30">
+                    <i data-lucide="cloud-sun" class="w-8 h-8 text-white"></i>
+                </div>
+                <h1 class="text-3xl font-bold tracking-tight">Meteo<span class="font-light opacity-80">Cast</span></h1>
+            </div>
+            
+            <div class="relative w-full sm:w-96">
+                <div class="flex items-center w-full h-14 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md focus-within:bg-white/20 focus-within:border-white/40 transition-all px-4">
+                    <i data-lucide="search" class="w-5 h-5 text-white/60 mr-3"></i>
+                    <input class="w-full bg-transparent outline-none text-white placeholder-white/60 text-lg" 
+                           type="text" id="search-input" placeholder="Search city..." autocomplete="off" />
+                </div>
+                <!-- Search Results -->
+                <div id="search-results" class="absolute top-16 left-0 w-full bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden hidden z-50">
+                    <!-- Dynamic Results -->
+                </div>
+            </div>
+        </nav>
+
+        <div id="message-container" class="hidden text-center py-8">
+            <p id="message-text" class="text-xl animate-pulse text-white/80">Loading...</p>
+        </div>
+
+        <!-- Main Content Layout (Responsive Grid) -->
+        <main id="weather-dashboard" class="grid grid-cols-1 lg:grid-cols-3 gap-6 opacity-0 transition-opacity duration-700">
+            
+            <!-- Left Column: Current Weather & Forecast -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Current Weather Hero Card -->
+                <div class="glass-panel rounded-3xl p-6 sm:p-10 relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="flex items-center gap-3">
+                                <h2 class="text-4xl sm:text-5xl font-bold" id="city-name">--</h2>
+                                <button id="save-btn" class="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors group cursor-pointer" title="Save to Favorites">
+                                    <i data-lucide="heart" id="heart-icon" class="w-6 h-6 text-white/50 group-hover:text-red-400 transition-colors"></i>
+                                </button>
+                            </div>
+                            <p class="text-white/70 text-lg mt-2" id="current-date">--</p>
+                        </div>
+                        <div class="text-right hidden sm:block">
+                            <p class="text-sm font-medium uppercase tracking-widest text-white/60">Current</p>
+                            <p class="text-lg" id="current-desc-top">--</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 sm:mt-12 flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6">
+                        <div class="flex items-center gap-6">
+                            <div id="weather-icon-large" class="drop-shadow-2xl">
+                                <i data-lucide="sun" class="w-24 h-24 sm:w-32 sm:h-32"></i>
+                            </div>
+                            <div>
+                                <div class="text-7xl sm:text-8xl font-black tracking-tighter" id="current-temp">--°</div>
+                                <p class="text-2xl sm:hidden capitalize mt-2 text-center" id="current-desc-mobile">--</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Mini Detail Grid -->
+                        <div class="grid grid-cols-2 gap-3 w-full sm:w-auto">
+                            <div class="glass-card rounded-xl p-4 flex flex-col items-center justify-center min-w-[100px]">
+                                <i data-lucide="thermometer" class="w-5 h-5 text-white/60 mb-1"></i>
+                                <span class="text-xs text-white/60 uppercase">Feels Like</span>
+                                <span class="text-xl font-bold" id="feels-like">--°</span>
+                            </div>
+                            <div class="glass-card rounded-xl p-4 flex flex-col items-center justify-center min-w-[100px]">
+                                <i data-lucide="droplets" class="w-5 h-5 text-white/60 mb-1"></i>
+                                <span class="text-xs text-white/60 uppercase">Humidity</span>
+                                <span class="text-xl font-bold" id="humidity">--%</span>
+                            </div>
+                            <div class="glass-card rounded-xl p-4 flex flex-col items-center justify-center min-w-[100px]">
+                                <i data-lucide="wind" class="w-5 h-5 text-white/60 mb-1"></i>
+                                <span class="text-xs text-white/60 uppercase">Wind</span>
+                                <span class="text-xl font-bold" id="wind-speed">--</span>
+                            </div>
+                            <div class="glass-card rounded-xl p-4 flex flex-col items-center justify-center min-w-[100px]">
+                                <i data-lucide="gauge" class="w-5 h-5 text-white/60 mb-1"></i>
+                                <span class="text-xs text-white/60 uppercase">Pressure</span>
+                                <span class="text-xl font-bold" id="pressure">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7 Day Forecast -->
+                <div>
+                    <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+                        <i data-lucide="calendar-days" class="w-5 h-5 text-white/70"></i> 
+                        7-Day Forecast
+                    </h3>
+                    <div class="flex overflow-x-auto gap-4 pb-2 no-scrollbar" id="forecast-container">
+                        <!-- Forecast items injected via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Saved Cities (Database) -->
+            <div class="glass-panel rounded-3xl p-6 flex flex-col h-[500px] lg:h-auto">
+                <h3 class="text-xl font-bold mb-4 flex items-center justify-between">
+                    <span class="flex items-center gap-2">
+                        <i data-lucide="bookmark" class="w-5 h-5 text-white/70"></i> 
+                        Saved Locations
+                    </span>
+                    <span id="db-status" class="flex items-center gap-1 text-xs bg-yellow-500/20 text-yellow-300 px-2 py-1 rounded-full border border-yellow-500/30">
+                        <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span> Offline
+                    </span>
+                </h3>
+                
+                <div id="saved-cities-list" class="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                    <div class="text-center text-white/40 mt-10 text-sm">
+                        <i data-lucide="database" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                        Connecting to database...
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Application Script (ES Module for Firebase) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- 1. DOM Elements ---
+        const UI = {
+            search: document.getElementById('search-input'),
+            results: document.getElementById('search-results'),
+            dashboard: document.getElementById('weather-dashboard'),
+            msgCont: document.getElementById('message-container'),
+            msgText: document.getElementById('message-text'),
+            city: document.getElementById('city-name'),
+            date: document.getElementById('current-date'),
+            temp: document.getElementById('current-temp'),
+            descTop: document.getElementById('current-desc-top'),
+            descMob: document.getElementById('current-desc-mobile'),
+            feelsLike: document.getElementById('feels-like'),
+            humidity: document.getElementById('humidity'),
+            wind: document.getElementById('wind-speed'),
+            pressure: document.getElementById('pressure'),
+            forecast: document.getElementById('forecast-container'),
+            icon: document.getElementById('weather-icon-large'),
+            body: document.getElementById('app-body'),
+            saveBtn: document.getElementById('save-btn'),
+            heartIcon: document.getElementById('heart-icon'),
+            savedList: document.getElementById('saved-cities-list'),
+            dbStatus: document.getElementById('db-status')
+        };
+
+        // --- 2. State & Database Variables ---
+        let appState = {
+            currentCity: { name: "Pune", lat: 18.5195, lon: 73.8554 }, // Default
+            savedLocations: [],
+            isDbConnected: false
+        };
+
+        let db, auth, currentUser, appId;
+
+        // --- 3. Database & Firebase Initialization ---
+        async function initDatabase() {
+            try {
+                if (typeof __firebase_config !== 'undefined') {
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+                    // Strict Auth Flow
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    onAuthStateChanged(auth, (user) => {
+                        currentUser = user;
+                        if (user) {
+                            appState.isDbConnected = true;
+                            updateDbStatus(true);
+                            setupDatabaseListener();
+                        }
+                    });
+                } else {
+                    throw new Error("Local environment");
+                }
+            } catch (error) {
+                console.log("Running locally without Database Config. Using simulated memory.");
+                updateDbStatus(false);
+                renderSavedCities(); // Render empty or simulated state
+            }
+        }
+
+        function updateDbStatus(isConnected) {
+            if (isConnected) {
+                UI.dbStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-400"></span> Live DB`;
+                UI.dbStatus.className = "flex items-center gap-1 text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded-full border border-green-500/30";
+            } else {
+                UI.dbStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-gray-400"></span> Local Only`;
+                UI.dbStatus.className = "flex items-center gap-1 text-xs bg-gray-500/20 text-gray-300 px-2 py-1 rounded-full border border-gray-500/30";
+            }
+        }
+
+        function setupDatabaseListener() {
+            if (!currentUser || !db) return;
+            const collectionRef = collection(db, 'artifacts', appId, 'users', currentUser.uid, 'saved_cities');
+            
+            onSnapshot(collectionRef, (snapshot) => {
+                appState.savedLocations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderSavedCities();
+                updateHeartIconState();
+            }, (error) => {
+                console.error("Database sync error:", error);
+            });
+        }
+
+        // --- 4. Weather API (Open-Meteo) ---
+        const weatherCodes = {
+            0:  { desc: "Clear sky", icon: "sun", bg: "bg-gradient-to-br from-blue-500 to-indigo-900", color: "text-yellow-400" },
+            1:  { desc: "Mainly clear", icon: "sun", bg: "bg-gradient-to-br from-blue-600 to-indigo-800", color: "text-yellow-300" },
+            2:  { desc: "Partly cloudy", icon: "cloud-sun", bg: "bg-gradient-to-br from-slate-600 to-blue-900", color: "text-slate-200" },
+            3:  { desc: "Overcast", icon: "cloud", bg: "bg-gradient-to-br from-slate-700 to-slate-900", color: "text-slate-400" },
+            45: { desc: "Fog", icon: "cloud-fog", bg: "bg-gradient-to-br from-gray-600 to-slate-800", color: "text-gray-300" },
+            51: { desc: "Drizzle", icon: "cloud-drizzle", bg: "bg-gradient-to-br from-slate-800 to-blue-900", color: "text-blue-300" },
+            61: { desc: "Rain", icon: "cloud-rain", bg: "bg-gradient-to-br from-slate-900 to-blue-900", color: "text-blue-400" },
+            71: { desc: "Snow", icon: "snowflake", bg: "bg-gradient-to-br from-blue-300 to-slate-700", color: "text-white" },
+            95: { desc: "Thunderstorm", icon: "cloud-lightning", bg: "bg-gradient-to-br from-slate-900 to-purple-900", color: "text-yellow-500" }
+        };
+
+        function getWInfo(code, isDay) {
+            let info = weatherCodes[code] || weatherCodes[0];
+            // Simplify mapping for brevity
+            if(code >= 51 && code <= 55) info = weatherCodes[51];
+            if(code >= 61 && code <= 65) info = weatherCodes[61];
+            if(code >= 71 && code <= 85) info = weatherCodes[71];
+            if(code >= 95) info = weatherCodes[95];
+
+            if (code === 0 && !isDay) return { desc: "Clear night", icon: "moon", bg: "bg-gradient-to-br from-slate-900 to-black", color: "text-blue-100" };
+            return info;
+        }
+
+        async function fetchWeather(cityObj) {
+            UI.dashboard.classList.add('opacity-0');
+            UI.msgCont.classList.remove('hidden');
+            
+            try {
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${cityObj.lat}&longitude=${cityObj.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,surface_pressure,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                appState.currentCity = cityObj;
+                updateUI(data);
+                
+                setTimeout(() => {
+                    UI.msgCont.classList.add('hidden');
+                    UI.dashboard.classList.remove('opacity-0');
+                }, 300);
+            } catch (err) {
+                console.error(err);
+                UI.msgText.textContent = "Failed to load data.";
+            }
+        }
+
+        async function searchLocations(query) {
+            if (query.length < 2) { UI.results.classList.add('hidden'); return; }
+            try {
+                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`);
+                const data = await res.json();
+                
+                UI.results.innerHTML = '';
+                if (data.results) {
+                    data.results.forEach(c => {
+                        const div = document.createElement('div');
+                        div.className = "p-4 hover:bg-slate-700 cursor-pointer flex flex-col border-b border-slate-700/50 last:border-0";
+                        div.innerHTML = `<span class="font-bold text-white">${c.name}</span><span class="text-xs text-slate-400">${c.admin1 || ''} ${c.country}</span>`;
+                        div.onclick = () => {
+                            UI.search.value = '';
+                            UI.results.classList.add('hidden');
+                            fetchWeather({ name: c.name, lat: c.latitude, lon: c.longitude });
+                        };
+                        UI.results.appendChild(div);
+                    });
+                    UI.results.classList.remove('hidden');
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // --- 5. UI Updates & Interactivity ---
+        function updateUI(data) {
+            const cur = data.current;
+            const wInfo = getWInfo(cur.weather_code, cur.is_day);
+
+            UI.body.className = `min-h-screen ${wInfo.bg} text-white font-sans antialiased transition-colors duration-1000`;
+            
+            UI.city.textContent = appState.currentCity.name;
+            UI.date.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
+            UI.temp.textContent = `${Math.round(cur.temperature_2m)}°`;
+            
+            UI.descTop.textContent = wInfo.desc;
+            UI.descMob.textContent = wInfo.desc;
+            
+            UI.icon.innerHTML = `<i data-lucide="${wInfo.icon}" class="w-24 h-24 sm:w-32 sm:h-32 ${wInfo.color}"></i>`;
+            
+            UI.feelsLike.textContent = `${Math.round(cur.apparent_temperature)}°`;
+            UI.humidity.textContent = `${cur.relative_humidity_2m}%`;
+            UI.wind.textContent = `${Math.round(cur.wind_speed_10m)} km/h`;
+            UI.pressure.textContent = `${Math.round(cur.surface_pressure)} hPa`;
+
+            // Forecast
+            UI.forecast.innerHTML = '';
+            for(let i = 1; i < 7; i++) {
+                if(!data.daily.time[i]) break;
+                const dInfo = getWInfo(data.daily.weather_code[i], 1);
+                const dayName = i === 1 ? 'Tomorrow' : new Date(data.daily.time[i]).toLocaleDateString('en-US', { weekday: 'short' });
+                
+                const card = document.createElement('div');
+                card.className = "glass-card rounded-2xl p-4 min-w-[110px] flex flex-col items-center justify-between gap-3 shrink-0";
+                card.innerHTML = `
+                    <span class="text-sm font-medium text-white/80">${dayName}</span>
+                    <i data-lucide="${dInfo.icon}" class="w-8 h-8 ${dInfo.color}"></i>
+                    <div class="flex gap-3 text-sm font-bold">
+                        <span>${Math.round(data.daily.temperature_2m_max[i])}°</span>
+                        <span class="text-white/40">${Math.round(data.daily.temperature_2m_min[i])}°</span>
+                    </div>
+                `;
+                UI.forecast.appendChild(card);
+            }
+            lucide.createIcons();
+            updateHeartIconState();
+        }
+
+        // --- Database UI Operations ---
+        function updateHeartIconState() {
+            const isSaved = appState.savedLocations.some(loc => loc.name === appState.currentCity.name);
+            if (isSaved) {
+                UI.heartIcon.classList.remove('text-white/50');
+                UI.heartIcon.classList.add('text-red-500', 'fill-red-500');
+            } else {
+                UI.heartIcon.classList.remove('text-red-500', 'fill-red-500');
+                UI.heartIcon.classList.add('text-white/50');
+            }
+        }
+
+        async function toggleSaveCity() {
+            if (!appState.isDbConnected || !currentUser) {
+                alert("Cloud saving requires connecting to the database environment.");
+                return;
+            }
+
+            const current = appState.currentCity;
+            const existingCity = appState.savedLocations.find(loc => loc.name === current.name);
+            
+            try {
+                if (existingCity) {
+                    // Delete
+                    const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'saved_cities', existingCity.id);
+                    await deleteDoc(docRef);
+                } else {
+                    // Save
+                    const id = current.name.replace(/\s+/g, '-').toLowerCase() + '-' + Date.now();
+                    const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'saved_cities', id);
+                    await setDoc(docRef, {
+                        name: current.name,
+                        lat: current.lat,
+                        lon: current.lon,
+                        savedAt: Date.now()
+                    });
+                }
+            } catch (err) { console.error("DB Error:", err); }
+        }
+
+        function renderSavedCities() {
+            if (appState.savedLocations.length === 0) {
+                UI.savedList.innerHTML = `
+                    <div class="text-center text-white/50 mt-10 p-4 border border-dashed border-white/20 rounded-2xl">
+                        <i data-lucide="map-pin-off" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                        <p class="text-sm">No saved locations yet.</p>
+                        <p class="text-xs mt-1">Search for a city and click the heart icon to save it.</p>
+                    </div>`;
+                lucide.createIcons();
+                return;
+            }
+
+            UI.savedList.innerHTML = '';
+            appState.savedLocations.sort((a,b) => b.savedAt - a.savedAt).forEach(loc => {
+                const item = document.createElement('div');
+                item.className = "glass-card p-4 rounded-2xl flex justify-between items-center group cursor-pointer hover:bg-white/10 transition-colors";
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="map-pin" class="w-5 h-5 text-blue-300"></i>
+                        <span class="font-bold text-lg">${loc.name}</span>
+                    </div>
+                    <button class="delete-btn p-2 rounded-full hover:bg-red-500/20 text-white/30 hover:text-red-400 transition-colors">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                `;
+                
+                // Click to view
+                item.addEventListener('click', (e) => {
+                    if(!e.target.closest('.delete-btn')) {
+                        fetchWeather(loc);
+                    }
+                });
+
+                // Click to delete
+                const delBtn = item.querySelector('.delete-btn');
+                delBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    if(appState.isDbConnected) {
+                        const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'saved_cities', loc.id);
+                        await deleteDoc(docRef);
+                    }
+                });
+
+                UI.savedList.appendChild(item);
+            });
+            lucide.createIcons();
+        }
+
+        // --- Listeners & Boot ---
+        let timeout;
+        UI.search.addEventListener('input', (e) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => searchLocations(e.target.value), 400);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!UI.search.contains(e.target) && !UI.results.contains(e.target)) UI.results.classList.add('hidden');
+        });
+
+        UI.saveBtn.addEventListener('click', toggleSaveCity);
+
+        // Boot
+        lucide.createIcons();
+        initDatabase().then(() => {
+            fetchWeather(appState.currentCity);
+        });
+
+    </script>
+</body>
+</html>
